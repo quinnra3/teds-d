@@ -297,8 +297,9 @@ teds_clean |>
 teds_clean <- teds_clean |> 
   mutate(
     cannabis = case_when(
-      SUB1 == 4 | SUB2 == 4 | SUB3 == 4 ~ 1,
-      TRUE ~ 0
+      SUB1 == 4 | SUB2 == 4 | SUB3 == 4        ~ 1,
+      !is.na(SUB1) | is.na(SUB2) | is.na(SUB3) ~ 0,
+      TRUE ~ NA_real_
     )
   )
 
@@ -368,7 +369,7 @@ teds_clean <- teds_clean |>
     reason_2 = factor(
       reason_2,
       levels = c(0,1),
-      labels = c("Other",
+      labels = c("Did not complete",
                  "Completed")
     ),
     reason_3 = case_when( # secondary analysis 1 vs 2,3
@@ -382,7 +383,7 @@ teds_clean <- teds_clean |>
       labels = c("Dropped out/terminated",
                  "Completed")
     ),
-    reason_4 = case_when( # sensitivity analysis: 1 & 4 vs 2,3,5,6, & 7. 
+    reason_4 = case_when( # sensitivity analysis: 1 & 4 vs 2,3,5,6, & 7 
       REASON %in% c(1,4)       ~ 1,
       REASON %in% c(2,3,5,6,7) ~ 0,
       TRUE ~ NA_real_
@@ -390,13 +391,20 @@ teds_clean <- teds_clean |>
     reason_4 = factor(
       reason_4,
       levels = c(0,1),
-      labels = c("Other",
+      labels = c("Did not complete",
                  "Completed/Transferred")
-    ),
+    )
   )
 
-teds_clean |> count(REASON) |>  mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
+teds_clean <- teds_clean |> 
+  set_variable_labels(
+    reason_2 = "Treatment completion (primary)",
+    reason_3 = "Completion vs dropout/termination (secondary)",
+    reason_4 = "Completion or transfer (sensitivity)"
+  )
+
 teds_clean |> count(REASON, reason_2, reason_3, reason_4)
+teds_clean |> count(REASON) |>  mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
 teds_clean |> count(reason_2) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
 teds_clean |> count(reason_3) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
 teds_clean |> count(reason_4) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
@@ -441,8 +449,8 @@ teds_clean |> count(LOS, los_181) |> print(n = 38)
 teds_clean <- teds_clean |>
   mutate(
     methuse_2 = case_when(
-      METHUSE %in% 2 ~ 0,
-      METHUSE %in% 1 ~ 1,
+      METHUSE == 2 ~ 0,
+      METHUSE == 1 ~ 1,
       TRUE ~ NA_real_
     ),
     methuse_2 = factor(
@@ -510,7 +518,8 @@ teds_clean <- teds_clean |>
 
 teds_clean |> count(SEX)
 teds_clean |> count(SEX, sex_2) # check Male is ref category
-levels(teds_clean$sex_2)
+teds_clean |> count(sex_2) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
+levels(teds_clean$sex_2) # check Male is listed first (ref)
 
 # race
 teds_clean <- teds_clean |> 
@@ -622,15 +631,6 @@ teds_clean <- teds_clean |>
 teds_clean |> count(PSYPROB, psyprob_2)
 teds_clean |> count(psyprob_2) |> mutate(pct = n / sum(n) * 100)
 
-
-
-##########################
-##########################
-# BOOKMARK
-##########################
-##########################
-
-
 # flags
 flag_vars <- c("ALCFLG", "COKEFLG", "PCPFLG", "HALLFLG",
                "MTHAMFLG", "STIMFLG", "BENZFLG", "SEDHPFLG", "OTHERFLG")
@@ -641,32 +641,20 @@ EXCLUDED_flag_vars <- (c("MARFLG", "HERFLG", "METHFLG", "OPSYNFLG",
 teds_clean |> count(ALCFLG)
 
 teds_clean <- teds_clean |> 
-  mutate(
-    across(
-      all_of(flag_vars),
-      ~ factor(.x,
-               levels = c(0,1),
-               labels = c("No", "Yes")),
-      .names = "{.col}_2"
-    )
-  ) |> 
   set_variable_labels(
-    ALCFLG_2   = "Alcohol",
-    COKEFLG_2  = "Cocaine/crack",
-    PCPFLG_2   = "PCP",
-    HALLFLG_2  = "Hallucinogens",
-    MTHAMFLG_2 = "Methamphetamine/speed",
-    STIMFLG_2  = "Other stimulants",
-    BENZFLG_2  = "Benzodiazepines",
-    SEDHPFLG_2 = "Other non-benzodiazepine sedatives/hypnotics",
-    OTHERFLG_2 = "Other drugs"
+    ALCFLG   = "Alcohol",
+    COKEFLG  = "Cocaine/crack",
+    PCPFLG   = "PCP",
+    HALLFLG  = "Hallucinogens",
+    MTHAMFLG = "Methamphetamine/speed",
+    STIMFLG  = "Other stimulants",
+    BENZFLG  = "Benzodiazepines",
+    SEDHPFLG = "Other non-benzodiazepine sedatives/hypnotics",
+    OTHERFLG = "Other drugs"
   )
 
-teds_clean |> count(ALCFLG, ALCFLG_2)
-
-
 teds_clean |> count(ALCFLG)   |> mutate(pct = n / sum(n) * 100)
-teds_clean |> count(COKEFLG, COKEFLF_2)  |> mutate(pct = n / sum(n) * 100)
+teds_clean |> count(COKEFLG)  |> mutate(pct = n / sum(n) * 100)
 teds_clean |> count(PCPFLG)   |> mutate(pct = n / sum(n) * 100)
 teds_clean |> count(HALLFLG)  |> mutate(pct = n / sum(n) * 100)
 teds_clean |> count(MTHAMFLG) |> mutate(pct = n / sum(n) * 100)
@@ -833,8 +821,7 @@ teds_clean |> count(HLTHINS, hlthins_2)
 teds_clean |> count(HLTHINS)
 teds_clean |> count(PRIMPAY)
 
-
-# HLTHINS dummy vars 
+# HLTHINS (original var, used in models)
 
 teds_clean |> count(HLTHINS)
 
@@ -852,7 +839,6 @@ teds_clean <- teds_clean |>
 teds_clean |> count(hlthins_3)
 teds_clean |> count(HLTHINS, hlthins_3)
 levels(teds_clean$hlthins_3) # check private is ref
-
 
 # HLTHINS missingness
 
@@ -896,6 +882,59 @@ teds_hlthins <- teds_clean |>
 
 nrow(teds_hlthins) # n = 2006710
 
+# NOPRIOR
+teds_clean <- teds_clean |>
+  mutate(
+    noprior_2 = factor(
+      NOPRIOR,
+      levels = 0:5,
+      labels = c("0", "1", "2", "3", "4", "5+"))
+  )
+
+teds_clean |> count(NOPRIOR, noprior_2)
+teds_clean |> count(noprior_2) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
+
+# PSOURCE
+teds_clean <- teds_clean |>
+  mutate(
+    psource_2 = factor(
+      PSOURCE,
+      levels = 1:7,
+      labels = c("Self/individual",
+                 "Alcohol/drug use care provider",
+                 "Other health care provider",
+                 "School",
+                 "Employer/EAP",
+                 "Other community referral",
+                 "Court/criminal justice/DUI/DWI"))
+  )
+
+teds_clean |> count(PSOURCE, psource_2)
+teds_clean |> count(psource_2) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
+teds_clean |> count(psource_2, age_dec) |> print(n=50)
+
+# PSOURCE recoded for potentially small cell sizes
+teds_clean <- teds_clean |>
+  mutate(
+    psource_3 = case_when(
+      PSOURCE == 1        ~ "Self/individual",
+      PSOURCE %in% c(2,3) ~ "Health care provider",
+      PSOURCE == 7        ~ "Criminal justice",
+      PSOURCE %in% 4:6    ~ "Other (school/employer/community)",
+      TRUE ~ NA_character_
+    ), 
+      psource_3 = factor(
+        psource_3,
+        levels = c("Self/individual",
+                   "Health care provider",
+                   "Criminal justice",
+                   "Other (school/employer/community)")
+      )
+  )
+
+teds_clean |> count(PSOURCE, psource_2, psource_3)
+teds_clean |> count(psource_3) |> mutate(pct = n / sum(n) * 100, flag_small_cell = n < 11)
+
 #############
 # OR function
 #############
@@ -922,395 +961,16 @@ or_ci_wald_tbl <- function(model) {
     rename(estimate = OR, conf.low = `2.5 %`, conf.high = `97.5 %`)
 }
 
-#################################################################
-# Models
-
-# Exposures:
-#   primary:   'cannabis'
-#   secondary: 'cannabis_freq'
-
-# Primary Outcome: REASON
-#   a) REASON (1) vs (2-7) 'reason_2'
-#   b) REASON (1) vs (2,3) 'reason_3'
-
-# Secondary Outcome: LOS
-#   a) LOS > 180 days 'los_181'
-#   b) continuous (if this is possible...?)
-
-# b0: crude
-# b1: + sociodemos
-# b2: + hlthins
-# b3: + substance flags
-# b4: + psyprob
-#################################################################
-
-# confirm levels
-map(teds_clean[c("age_dec",
-                 "sex_2",
-                 "ethnic_2",
-                 "employ_2",
-                 "marstat_2",
-                 "livarag_2",
-                 "psyprob_2",
-                 "hlthins_3",
-                 "reason_2",
-                 "reason_3",
-                 "cannabis_freq",
-                 "cannabis")],
-    levels)
-
-nobs(m_r2_can_b0_og)  # n = 232627
-nobs(m_r2_freq_b0_og) # n = 232627
-nobs(m_r3_can_b0_og)  # n = 1341510
-
-#######
-# b0
-#######
-
-m_r2_can_b0_og <- glm(reason_2 ~ cannabis, data = teds_clean, family = binomial)
-
-summary(m_r2_can_b0_og)
-or_ci_wald(m_r2_can_b0_og)
-
-# reporting - m_r2_can_b0_og
-teds_clean |> 
-  filter(!is.na(reason_2), !is.na(cannabis)) |> 
-  group_by(cannabis) |> 
-  summarise(N = n(),
-            completed = sum(reason_2 == "Completed"),
-            .groups = "drop") |> 
-  mutate(completed_cell = sprintf("%s (%.1f)",
-                                  format(completed, big.mark = ","),
-                                  completed / N * 100),
-         N = format(N, big.mark = ","))
-
-est <- exp(coef(m_r2_can_b0_og)["cannabis"])
-ci  <- exp(confint.default(m_r2_can_b0_og)["cannabis", ])
-
-sprintf("%.2f (%.2f–%.2f)", est, ci[1], ci[2])
-
-# -------------------------------------
-# primary exposure: cannabis frequency 
-# -------------------------------------
-
-m_r2_freq_b0_og <- glm(reason_2 ~ cannabis_freq, data = teds_clean, family = binomial)
-
-summary(m_r2_freq_b0_og)
-or_ci_wald(m_r2_freq_b0_og)
-
-# reporting - EXP 2 & primary (1) vs (2-7)
-teds_clean |> 
-  filter(!is.na(reason_2), !is.na(cannabis_freq)) |> 
-  group_by(cannabis_freq) |> 
-  summarise(N = n(),
-            completed = sum(reason_2 == "Completed"),
-            .groups = "drop") |> 
-  mutate(completed_cell = sprintf("%s (%.1f)",
-                                  format(completed, big.mark = ","),
-                                  completed / N * 100),
-         N = format(N, big.mark = ","))
-
-est <- exp(coef(m_r2_freq_b0_og)["cannabis_freq"])
-ci <- exp(confint.default(m_r2_freq_b0_og)["cannabis_freq", ])
-
-sprintf("%.2f (%.2f–%.2f)", est, ci[1], ci[2])
-
-
-# outcome: REASON, secondary: treatment completion (1) vs (2,3)
-
-m_r3_can_b0_og <- glm(reason_3 ~ cannabis, data = teds_clean, family = binomial)
-
-summary(m_r3_can_b0_og)
-or_ci_wald(m_r3_can_b0_og)
-
-m_r3_freq_b0_og <- glm(reason_3 ~ cannabis_freq, data = teds_clean, family = binomial)
-
-summary(m_r3_freq_b0_og)
-or_ci_wald(m_r3_freq_b0_og)
-
-# reporting - EXP 1 & primary (1) vs (2,3)
-
-teds_clean |> 
-  filter(!is.na(reason_3), !is.na(cannabis)) |> 
-  group_by(cannabis) |> 
-  summarise(N = n(),
-            completed = sum(reason_3 == "Completed"),
-            .groups = "drop") |> 
-  mutate(completed_cell = sprintf("%s (%.1f)",
-                                  format(completed, big.mark = ","),
-                                  completed / N * 100),
-         N = format(N, big.mark = ","))
-
-est <- exp(coef(m_r3_can_b0_og)["cannabis"])
-ci  <- exp(confint.default(m_r3_can_b0_og)["cannabis", ])
-
-sprintf("%.2f (%.2f–%.2f)", est, ci[1], ci[2])
-
-# reporting - EXP 2 & primary (1) vs (2,3)
-
-teds_clean |> 
-  filter(!is.na(reason_3), !is.na(cannabis_freq)) |> 
-  group_by(cannabis_freq) |> 
-  summarise(N = n(),
-            completed = sum(reason_3 == "Completed"),
-            .groups = "drop") |> 
-  mutate(completed_cell = sprintf("%s (%.1f)",
-                                  format(completed, big.mark = ","),
-                                  completed / N * 100),
-         N = format(N, big.mark = ","))
-
-est <- exp(coef(m_r3_freq_b0_og))[-1]
-ci  <- exp(confint.default(m_r3_freq_b0_og))[-1, ]
-
-tibble(term = names(est),
-       cell = sprintf("%.2f (%.2f–%.2f)", est, ci[, 1], ci[, 2]))
-
-
-# reporting - primary (1) vs (2,3) N and %s
-
-sec_counts <- function(exposure) {
-  teds_clean |> 
-    filter(!is.na(reason_3), !is.na({{ exposure }})) |> 
-    group_by({{ exposure }}) |> 
-    summarise(N = n(),
-              completed = sum(reason_3 == "Completed"),
-              .groups = "drop") |> 
-    mutate(completed_cell = sprintf("%s (%.1f)",
-                                    format(completed, big.mark = ","),
-                                    completed / N * 100),
-           N = format(N, big.mark = ","))
+# USE THESE FOR MODELS
+or_ci_wald_tbl <- function(model) {
+  broom::tidy(model) |>
+    mutate(
+      conf.low  = exp(estimate - qnorm(0.975) * std.error),
+      conf.high = exp(estimate + qnorm(0.975) * std.error),
+      estimate  = exp(estimate)
+    ) |>
+    select(term, estimate, conf.low, conf.high, p.value)
 }
-
-sec_counts(cannabis)        # Any cannabis use: No / Yes rows
-sec_counts(cannabis_freq)   
-
-
-
-#######################
-# MODEL BUILDING
-
-# block 1 - sociodemos
-# block 2 - hlthins
-# block 3 - sub flags
-# block 4 - psyprob
-
-#######################
-
-exposures <- c("cannabis", "cannabis_freq")
-
-outcomes <- tribble(
-  ~outcome,   ~label,              ~family,
-  "reason_2", "REASON 1 vs 2-7",   "binomial",
-  "reason_3", "REASON 1 vs 2-3",   "binomial",
-  "los_181",  "LOS > 180 days",    "binomial"
-  # "los_days", "LOS (continuous)", "gaussian"
-)
-
-# ------- samples per model ------- #
-
-all_covars <- c("age_dec", "sex_2", "race_2", "ethnic_2", "employ_2", "marstat_2", "livarag_2",
-                "HLTHINS",
-                "ALCFLG", "COKEFLG", "PCPFLG", "HALLFLG", "MTHAMFLG", "STIMFLG", "BENZFLG", "SEDHPFLG", "OTHERFLG",
-                "PSYPROB")
-
-data_r2 <- teds_clean |> drop_na(reason_2, cannabis, cannabis_freq, all_of(all_covars))
-data_r3 <- teds_clean |> drop_na(reason_3, cannabis, cannabis_freq, all_of(all_covars))
-data_los <- teds_clean |> drop_na(los_181, cannabis, cannabis_freq, all_of(all_covars))
-
-nrow(data_r2)
-nrow(data_r3)
-nrow(data_los)
-nrow(teds_clean)
-
-# ------- primary outcome: REASON 1 vs 2-7 'reason_2' ------- #
-
-## reason_2 ~ cannabis
-
-m_r2_can_b0 <- glm(reason_2 ~ cannabis, data = data_r2, family = binomial)
-m_r2_can_b1 <- update(m_r2_can_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_r2_can_b2 <- update(m_r2_can_b1, . ~ . + HLTHINS)
-m_r2_can_b3 <- update(m_r2_can_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_r2_can_b4 <- update(m_r2_can_b3, . ~ . + PSYPROB)
-
-summary(m_r2_can_b0)
-summary(m_r2_can_b1)
-summary(m_r2_can_b2)
-summary(m_r2_can_b3)
-summary(m_r2_can_b4)
-
-or_ci_wald(m_r2_can_b0)
-or_ci_wald(m_r2_can_b1)
-or_ci_wald(m_r2_can_b2)
-or_ci_wald(m_r2_can_b3)
-or_ci_wald(m_r2_can_b4)
-
-## reason_2 ~ cannabis_freq
-
-m_r2_freq_b0 <- glm(reason_2 ~ cannabis_freq, data = data_r2, family = binomial)
-m_r2_freq_b1 <- update(m_r2_freq_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_r2_freq_b2 <- update(m_r2_freq_b1, . ~ . + HLTHINS)
-m_r2_freq_b3 <- update(m_r2_freq_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_r2_freq_b4 <- update(m_r2_freq_b3, . ~ . + PSYPROB)
-
-summary(m_r2_freq_b0)
-summary(m_r2_freq_b1)
-summary(m_r2_freq_b2)
-summary(m_r2_freq_b3)
-summary(m_r2_freq_b4)
-
-or_ci_wald(m_r2_freq_b0)
-or_ci_wald(m_r2_freq_b1)
-or_ci_wald(m_r2_freq_b2)
-or_ci_wald(m_r2_freq_b3)
-or_ci_wald(m_r2_freq_b4)
-
-
-# ------- outcome: REASON 1 vs 2,3 'reason_3' ------- #
-
-## reason_3 ~ cannabis
-
-m_r3_can_b0 <- glm(reason_3 ~ cannabis, data = data_r3, family = binomial)
-m_r3_can_b1 <- update(m_r3_can_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_r3_can_b2 <- update(m_r3_can_b1, . ~ . + HLTHINS)
-m_r3_can_b3 <- update(m_r3_can_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_r3_can_b4 <- update(m_r3_can_b3, . ~ . + PSYPROB)
-
-summary(m_r3_can_b0)
-summary(m_r3_can_b1)
-summary(m_r3_can_b2)
-summary(m_r3_can_b3)
-summary(m_r3_can_b4)
-
-or_ci_wald(m_r3_can_b0)
-or_ci_wald(m_r3_can_b1)
-or_ci_wald(m_r3_can_b2)
-or_ci_wald(m_r3_can_b3)
-or_ci_wald(m_r3_can_b4)
-
-## reason_3 ~ cannabis_freq
-
-m_r3_freq_b0 <- glm(reason_3 ~ cannabis_freq, data = data_r3, family = binomial)
-m_r3_freq_b1 <- update(m_r3_freq_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_r3_freq_b2 <- update(m_r3_freq_b1, . ~ . + HLTHINS)
-m_r3_freq_b3 <- update(m_r3_freq_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_r3_freq_b4 <- update(m_r3_freq_b3, . ~ . + PSYPROB)
-
-summary(m_r3_freq_b0)
-summary(m_r3_freq_b1)
-summary(m_r3_freq_b2)
-summary(m_r3_freq_b3)
-summary(m_r3_freq_b4)
-
-or_ci_wald(m_r3_freq_b0)
-or_ci_wald(m_r3_freq_b1)
-or_ci_wald(m_r3_freq_b2)
-or_ci_wald(m_r3_freq_b3)
-or_ci_wald(m_r3_freq_b4)
-
-# ------- outcome: LOS > 180 days 'los_181' ------- #
-
-## los_181 ~ cannabis
-
-m_los_can_b0 <- glm(los_181 ~ cannabis, data = data_los, family = binomial)
-m_los_can_b1 <- update(m_los_can_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_los_can_b2 <- update(m_los_can_b1, . ~ . + HLTHINS)
-m_los_can_b3 <- update(m_los_can_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_los_can_b4 <- update(m_los_can_b3, . ~ . + PSYPROB)
-
-summary(m_los_can_b0)
-summary(m_los_can_b1)
-summary(m_los_can_b2)
-summary(m_los_can_b3)
-summary(m_los_can_b4)
-
-or_ci_wald(m_los_can_b0)
-or_ci_wald(m_los_can_b1)
-or_ci_wald(m_los_can_b2)
-or_ci_wald(m_los_can_b3)
-or_ci_wald(m_los_can_b4)
-
-## los_181 ~ cannabis_freq  
-
-m_los_freq_b0 <- glm(los_181 ~ cannabis_freq, data = data_los, family = binomial)
-m_los_freq_b1 <- update(m_los_freq_b0, . ~ . + age_dec + sex_2 + race_2 + ethnic_2 + employ_2 + marstat_2 + livarag_2)
-m_los_freq_b2 <- update(m_los_freq_b1, . ~ . + HLTHINS)
-m_los_freq_b3 <- update(m_los_freq_b2, . ~ . + ALCFLG + COKEFLG + PCPFLG + HALLFLG + MTHAMFLG + STIMFLG + BENZFLG + SEDHPFLG + OTHERFLG)
-m_los_freq_b4 <- update(m_los_freq_b3, . ~ . + PSYPROB)
-
-summary(m_los_freq_b0)
-summary(m_los_freq_b1)
-summary(m_los_freq_b2)
-summary(m_los_freq_b3)
-summary(m_los_freq_b4)
-
-or_ci_wald(m_los_freq_b0)
-or_ci_wald(m_los_freq_b1)
-or_ci_wald(m_los_freq_b2)
-or_ci_wald(m_los_freq_b3)
-or_ci_wald(m_los_freq_b4)
-
-
-# ------- ORs ------- #
-
-## collect all models
-model_list <- list(
-  m_r2_can_b0 = m_r2_can_b0,
-  m_r2_can_b1 = m_r2_can_b1,
-  m_r2_can_b2 = m_r2_can_b2,
-  m_r2_can_b3 = m_r2_can_b3,
-  m_r2_can_b4 = m_r2_can_b4,
-  m_r2_freq_b0 = m_r2_freq_b0,
-  m_r2_freq_b1 = m_r2_freq_b1,
-  m_r2_freq_b2 = m_r2_freq_b2,
-  m_r2_freq_b3 = m_r2_freq_b3,
-  m_r2_freq_b4 = m_r2_freq_b4,
-  m_r3_can_b0 = m_r3_can_b0,
-  m_r3_can_b1 = m_r3_can_b1,
-  m_r3_can_b2 = m_r3_can_b2,
-  m_r3_can_b3 = m_r3_can_b3,
-  m_r3_can_b4 = m_r3_can_b4,
-  m_r3_freq_b0 = m_r3_freq_b0,
-  m_r3_freq_b1 = m_r3_freq_b1,
-  m_r3_freq_b2 = m_r3_freq_b2,
-  m_r3_freq_b3 = m_r3_freq_b3,
-  m_r3_freq_b4 = m_r3_freq_b4,
-  m_los_can_b0 = m_los_can_b0,
-  m_los_can_b1 = m_los_can_b1,
-  m_los_can_b2 = m_los_can_b2,
-  m_los_can_b3 = m_los_can_b3,
-  m_los_can_b4 = m_los_can_b4,
-  m_los_freq_b0 = m_los_freq_b0,
-  m_los_freq_b1 = m_los_freq_b1,
-  m_los_freq_b2 = m_los_freq_b2,
-  m_los_freq_b3 = m_los_freq_b3,
-  m_los_freq_b4 = m_los_freq_b4
-)
-
-## extract ORs 
-results <- imap(model_list, \(m, nm) {
-  or_ci_wald_tbl(m) |>
-    filter(str_starts(term, "cannabis")) |>
-    mutate(model_name = nm, n = nobs(m))
-}) |>
-  list_rbind() |>
-  separate_wider_delim(model_name, delim = "_",
-                       names = c(NA, "outcome", "exposure", "model"))
-
-## n's across models
-results |> distinct(outcome, exposure, model, n) |> print(n = 30)
-
-results_table <- results |>
-  mutate(est = sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high)) |>
-  select(outcome, exposure, term, model, est) |>
-  pivot_wider(names_from = model, values_from = est)
-results_table
-
-dir.create("output", showWarnings = FALSE)
-saveRDS(model_list, "output/model_list.rds")
-write_csv(results, "output/results_long.csv")
-write_csv(results_table, "output/results_table.csv")
-
-
 
 #################################################################
 # MODEL BUILDING - NO HLTHINS, data = teds_clean
@@ -1445,6 +1105,101 @@ or_ci_wald(m2_los_freq_b0)
 or_ci_wald(m2_los_freq_b1)
 or_ci_wald(m2_los_freq_b2)
 or_ci_wald(m2_los_freq_b3)
+
+#################################################################
+# MODEL BUILDING - 10/19/2026 UDPATE, data = teds_clean
+
+# Exposures:
+#   primary:   'cannabis'
+#   secondary: 'cannabis_freq'
+
+# Primary outcome: REASON
+#   a) REASON (1)    vs (2-7)       'reason_2'
+#   b) REASON (1)    vs (2,3)       'reason_3'
+#   c) REASON (1, 4) vs (2,3,5,6,7) 'reason_4'
+
+# Secondary outcome: LOS
+#   a) LOS > 180 days 'los_181'
+
+# Tertiary outcome: METHUSE
+#   a) METHUSE medication-assisted opioid therapy y/n 'methuse_2'
+
+# b0: crude
+# b1: + sociodemos
+# b2: + substance flags
+# b3: + psyprob
+# b4: + NOPRIOR & PSOURCE
+#################################################################
+
+# --------------- variables for v2 models --------------- #
+
+exposures <- c("cannabis", "cannabis_freq")
+
+blocks_v2 <- list(
+  b1 = c("age_dec", "sex_2", "race_2", "ethnic_2", "employ_2", "marstat_2", "livarag_2"),
+  b2 = c("ALCFLG", "COKEFLG", "PCPFLG", "HALLFLG", "MTHAMFLG", "HLTHINS",
+         "STIMFLG", "BENZFLG", "SEDHPFLG", "OTHERFLG"),
+  b3 = c("noprior_2", "psource_2")
+)
+
+all_covars_v2 <- unlist(blocks_v2, use.names = FALSE)
+
+outcomes_v2 <- tribble(
+  ~outcome,    ~label,                                  ~source,
+  "reason_2",  "REASON 1 vs 2-7",                       "REASON",
+  "reason_3",  "REASON 1 vs 2-3",                       "REASON",
+  "reason_4", "Sensitivity: REASON 1,4 vs 2,3,5-7",     "REASON",
+  "los_181",   "LOS > 180 days",                        "LOS",
+  "methuse_2", "METHUSE (MOUD)",                        "METHUSE"
+)
+
+# ------- missingness ------- #
+
+
+# (a) per variable
+
+missing_table <- teds_clean |>
+  summarise(across(all_of(c(exposures, all_covars_v2, unique(outcomes_v2$source))),
+                   ~ sum(is.na(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "n_missing") |>
+  mutate(
+    role = case_when(
+      variable %in% exposures     ~ "Exposure",
+      variable %in% all_covars_v2 ~ "Covariate",
+      TRUE                        ~ "Outcome"
+    ),
+    pct_missing     = round(n_missing / nrow(teds_clean) * 100, 1),
+    flag_small_cell = n_missing > 0 & n_missing < 11
+  ) |>
+  relocate(role)
+
+missing_table |> print(n = Inf)
+
+nrow(teds_clean)  # n = 2332627
+
+# (b) sequential exclusions per outcome
+#     teds_clean -> missing exposure -> missing any covariate -> missing outcome
+
+n_total <- nrow(teds_clean)
+cc_exp  <- teds_clean |> drop_na(all_of(exposures))
+cc_cov  <- cc_exp |> drop_na(all_of(all_covars_v2))
+
+flow_v2 <- outcomes_v2 |>
+  mutate(
+    n_total          = n_total,
+    excl_exposure    = n_total - nrow(cc_exp),
+    excl_covars      = nrow(cc_exp) - nrow(cc_cov),
+    excl_outcome_na  = map_int(source, \(s) sum(is.na(cc_cov[[s]]))),
+    excl_by_design   = map2_int(outcome, source, \(o, s) sum(!is.na(cc_cov[[s]]) & is.na(cc_cov[[o]]))),
+    n_analytic       = map_int(outcome, \(o) sum(!is.na(cc_cov[[o]])))
+  )
+
+flow_v2 |> print(width = Inf)
+
+vars <- c("cannabis", "psyprob_2", "sex_2", "employ_2", "hlthins_3",
+          "psource_3", paste0(flag_vars, "_2"))
+
+
 
 
 
