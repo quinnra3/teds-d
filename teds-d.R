@@ -181,8 +181,6 @@ teds_all |> count(METHUSE)
 teds_all |> count(PSOURCE)
 teds_all |> count(NOPRIOR)
 
-
-
 ####################
 # DSMCRIT vs PSYPROB
 ####################
@@ -822,7 +820,6 @@ teds_clean |> count(HLTHINS)
 teds_clean |> count(PRIMPAY)
 
 # HLTHINS (original var, used in models)
-
 teds_clean |> count(HLTHINS)
 
 teds_clean <- teds_clean |> 
@@ -840,7 +837,7 @@ teds_clean |> count(hlthins_3)
 teds_clean |> count(HLTHINS, hlthins_3)
 levels(teds_clean$hlthins_3) # check private is ref
 
-# HLTHINS missingness
+# HLTHINS missingness by state
 
 teds_clean |> 
   group_by(STFIPS) |> 
@@ -961,7 +958,7 @@ or_ci_wald_tbl <- function(model) {
     rename(estimate = OR, conf.low = `2.5 %`, conf.high = `97.5 %`)
 }
 
-# USE THESE FOR MODELS
+# USE THIS FOR MODELS
 or_ci_wald_tbl <- function(model) {
   broom::tidy(model) |>
     mutate(
@@ -1155,7 +1152,6 @@ outcomes_v2 <- tribble(
 
 # ------- missingness ------- #
 
-
 # (a) per variable
 
 missing_table <- teds_clean |>
@@ -1198,6 +1194,10 @@ flow_v2 |> print(width = Inf)
 
 vars <- c("cannabis", "psyprob_2", "sex_2", "employ_2", "hlthins_3",
           "psource_3", paste0(flag_vars, "_2"))
+
+# ---------------------------- models ---------------------------- # 
+
+
 
 
 
